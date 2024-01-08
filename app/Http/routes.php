@@ -11,21 +11,45 @@
 |
 */
 
+use \App\Models\Task;
+
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/task', function (){
-    return view('task.index');
-})->name('task.index');
+Route::group(['prefix' => 'task'], function () {
+    Route::get('/', function () {
+        $tasks = Task::all();
+        return view('task.index', [
+            'tasks' => $tasks,
+        ]);
+    })->name('task.index');
 
-Route::post('/task', function (\Illuminate\Http\Request $request){
-    dump($request->name);
-})->name('task.store');
+    Route::post('/', function (\Illuminate\Http\Request $request) {
+        $validator = Validator::make(
+            $request->all(),//request to array converting
+            [
+                'name' => 'required|max:200|unique:tasks,name',
+            ]
+        );
+        if ($validator->fails()) {
+            return redirect()
+                ->route('task.index')
+                ->withInput()
+                ->withErrors($validator);
+        }
+        $task = new Task();
+        $task->name = $request->name;
+        $task->save();
+        return redirect()->route('task.index');
+    })->name('task.store');
 
-Route::delete('/task/{task}', function (){
-    echo 'destroy task';
-})->name('task.destroy');
+    Route::delete('/{task}', function (Task $task) {
+        $task->delete();
+        return redirect()->route('task.index');
+    })->where('task', '[0-9]+')->name('task.destroy');
+});
+
 
 //Route::get('/task/{task}/edit', function (){
 //    echo 'edit task';
